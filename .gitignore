@@ -2,3 +2,4 @@
 dist
 assets
 *.log
+coverage
