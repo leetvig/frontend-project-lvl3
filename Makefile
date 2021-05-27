@@ -11,8 +11,7 @@ test:
 	npm test
 
 develop:
-	npx webpack serve
+	NODE_ENV=development npx webpack
 
 build:
-	rm -rf dist
 	NODE_ENV=production npx webpack
