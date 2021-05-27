@@ -2,8 +2,6 @@ const path = require('path');
 const HTMLWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
-console.log(process.env.NODE_ENV)
-
 module.exports = {
   mode: process.env.NODE_ENV || 'development',
   entry: './src/index.js',
