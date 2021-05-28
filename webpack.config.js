@@ -3,14 +3,15 @@ const HTMLWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 module.exports = {
-  mode: process.env.NODE_ENV || 'development',
+  mode: 'development',
   entry: './src/index.js',
   output: {
-    filename: '[name].[hash].js',
+    filename: '[name].[contenthash].js',
     path: path.resolve(__dirname, 'dist'),
   },
   devServer: {
-    port: 4000,
+    port: 9000,
+    hot: true,
   },
   plugins: [
     new HTMLWebpackPlugin({

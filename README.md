@@ -5,4 +5,4 @@
 [![Node CI](https://github.com/leetvig/frontend-project-lvl3/actions/workflows/node.js.yml/badge.svg)](https://github.com/leetvig/frontend-project-lvl3/actions/workflows/node.js.yml)
 [![Maintainability](https://api.codeclimate.com/v1/badges/3a5a5f9169ae694879de/maintainability)](https://codeclimate.com/github/leetvig/frontend-project-lvl3/maintainability)
 
-Demo: https://frontend-project-lvl3-lilac-nine.vercel.app/
+Демо: https://frontend-project-lvl3-lilac-nine.vercel.app/

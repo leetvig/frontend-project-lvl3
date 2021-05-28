@@ -10,8 +10,11 @@ lint-fix:
 test:
 	npm test
 
+start:
+	npx webpack serve --mode development --open
+
 develop:
-	NODE_ENV=development npx webpack
+	npx webpack --mode development
 
 build:
-	NODE_ENV=production npx webpack
+	npx webpack --mode production
