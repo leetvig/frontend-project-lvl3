@@ -88,27 +88,26 @@ const processStateHandler = (processState, elements) => {
   }
 };
 
-export default (state, elements) =>
-  onChange(state, (path, value) => {
-    switch (path) {
-      case 'feeds':
-        renderFeeds(value, elements);
-        break;
-      case 'posts':
-        renderPosts(value, elements);
-        break;
-      case 'form.processState':
-        processStateHandler(value, elements);
-        break;
-      case 'form.valid':
-        renderFeedback(value, elements);
-        break;
-      case 'form.error':
-        if (value) {
-          elements.feedback.textContent = value;
-        }
-        break;
-      default:
-        break;
-    }
-  });
+export default (state, elements) => onChange(state, (path, value) => {
+  switch (path) {
+    case 'feeds':
+      renderFeeds(value, elements);
+      break;
+    case 'posts':
+      renderPosts(value, elements);
+      break;
+    case 'form.processState':
+      processStateHandler(value, elements);
+      break;
+    case 'form.valid':
+      renderFeedback(value, elements);
+      break;
+    case 'form.error':
+      if (value) {
+        elements.feedback.textContent = value;
+      }
+      break;
+    default:
+      break;
+  }
+});

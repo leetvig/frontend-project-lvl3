@@ -2,7 +2,7 @@ import * as yup from 'yup';
 import axios from 'axios';
 import _ from 'lodash';
 
-import watcher from './view.js';
+import watcher from './view';
 
 const parser = (xml) => {
   const parserInstance = new DOMParser();
@@ -36,7 +36,9 @@ const addRSStoState = (channel, state) => {
   });
   posts.forEach((post) => {
     const { title, description, link } = post;
-    state.posts.unshift({ title, description, link, id: _.uniqueId() });
+    state.posts.unshift({
+      title, description, link, id: _.uniqueId(),
+    });
   });
 };
 
@@ -94,7 +96,7 @@ export default () => {
       .then((valid) => {
         watchedState.form.processState = 'sending';
         return axios.get(
-          `https://hexlet-allorigins.herokuapp.com/raw?disableCache=true&url=${valid}`
+          `https://hexlet-allorigins.herokuapp.com/raw?disableCache=true&url=${valid}`,
         );
       })
       .then((responce) => {
@@ -105,11 +107,12 @@ export default () => {
         addRSStoState(channel, watchedState);
         watchedState.channels.push(url);
         watchedState.form.processState = 'succeed';
-        watchedState.form.valid = true;
         watchedState.form.error = null;
+        watchedState.form.valid = true;
       })
       .catch((err) => {
         watchedState.form.processState = 'failed';
+        watchedState.form.valid = false;
         if (err.name === 'Error') {
           watchedState.form.error = 'Ресурс не содержит валидный RSS';
         } else {
