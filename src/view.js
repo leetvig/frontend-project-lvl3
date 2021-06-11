@@ -34,17 +34,10 @@ const createPost = (post) => `
     >
   </li>`;
 
-// Optimize
-const renderFeeds = (feeds, elements) => {
-  elements.feedsContainer.innerHTML = '';
-  const feedsList = createList(elements.feedsContainer, 'Новостные каналы');
-  feedsList.innerHTML = feeds.map((feed) => createFeed(feed)).join('\n');
-};
-
-const renderPosts = (posts, elements) => {
-  elements.postsContainer.innerHTML = '';
-  const postsList = createList(elements.postsContainer, 'Посты');
-  postsList.innerHTML = posts.map((post) => createPost(post)).join('\n');
+const renderList = (list, container, title, renderFunction) => {
+  container.innerHTML = '';
+  const listContainer = createList(container, title);
+  listContainer.innerHTML = list.map((item) => renderFunction(item)).join('\n');
 };
 
 const renderFeedback = (valid, elements) => {
@@ -58,28 +51,34 @@ const renderFeedback = (valid, elements) => {
   }
 };
 
+const lockFormUI = (lock, elements) => {
+  if (lock) {
+    elements.form.submit.setAttribute('disabled', true);
+    elements.form.input.setAttribute('readonly', true);
+  } else {
+    elements.form.submit.removeAttribute('disabled');
+    elements.form.input.removeAttribute('readonly');
+  }
+};
+
 const processStateHandler = (processState, elements) => {
   switch (processState) {
     case 'filling':
-      elements.form.submit.removeAttribute('disabled');
-      elements.form.input.removeAttribute('readonly');
+      lockFormUI(false, elements);
       break;
     case 'sending':
     case 'parsing':
     case 'validation':
-      elements.form.submit.setAttribute('disabled', true);
-      elements.form.input.setAttribute('readonly', true);
+      lockFormUI(true, elements);
       break;
     case 'succeed':
-      elements.form.submit.removeAttribute('disabled');
-      elements.form.input.removeAttribute('readonly');
+      lockFormUI(false, elements);
       elements.form.input.classList.remove('is-invalid');
       elements.form.input.value = '';
       elements.form.input.focus();
       break;
     case 'failed':
-      elements.form.submit.removeAttribute('disabled');
-      elements.form.input.removeAttribute('readonly');
+      lockFormUI(false, elements);
       elements.form.input.classList.add('is-invalid');
       elements.form.input.focus();
       break;
@@ -91,10 +90,15 @@ const processStateHandler = (processState, elements) => {
 export default (state, elements) => onChange(state, (path, value) => {
   switch (path) {
     case 'feeds':
-      renderFeeds(value, elements);
+      renderList(
+        value,
+        elements.feedsContainer,
+        'Новостные каналы',
+        createFeed,
+      );
       break;
     case 'posts':
-      renderPosts(value, elements);
+      renderList(value, elements.postsContainer, 'Посты', createPost);
       break;
     case 'form.processState':
       processStateHandler(value, elements);
