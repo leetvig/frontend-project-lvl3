@@ -1,4 +1,4 @@
-import 'bootstrap';
+import 'bootstrap/dist/js/bootstrap';
 import * as yup from 'yup';
 import axios from 'axios';
 import _ from 'lodash';

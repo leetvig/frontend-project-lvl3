@@ -12,6 +12,11 @@ module.exports = {
   devServer: {
     port: 9000,
   },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+    },
+  },
   plugins: [
     new HTMLWebpackPlugin({
       template: 'index.html',
