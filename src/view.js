@@ -27,11 +27,22 @@ const createPost = (post) => `
   <li class="list-group-item d-flex justify-content-between align-items-start border-0 border-end-0">
     <a
       href=${post.link}
-      class="fw-bold"
+      class="${post.isViewed ? 'fw-normal link-secondary' : 'fw-bold'}"
+      data-id=${post.id}
       target="_blank"
       rel="noopener noreferrer"
-      >${post.title}</a
     >
+    ${post.title}
+    </a>
+    <button
+      type="button"
+      class="btn btn-outline-primary btn-sm"
+      data-id=${post.id}
+      data-bs-toggle="modal"
+      data-bs-target="#modal"
+    >
+      Просмотр
+    </button>
   </li>`;
 
 const renderList = (list, container, title, renderFunction) => {
@@ -51,6 +62,16 @@ const renderFeedback = (valid, elements) => {
   }
 };
 
+const renderViewedPosts = (viewedPosts) => {
+  viewedPosts.forEach((id) => {
+    const link = document.querySelector(`a[data-id="${id}"]`);
+    if (link) {
+      link.classList.replace('fw-bold', 'fw-normal');
+      link.classList.add('link-secondary');
+    }
+  });
+};
+
 const lockFormUI = (lock, elements) => {
   if (lock) {
     elements.form.submit.setAttribute('disabled', true);
@@ -59,6 +80,12 @@ const lockFormUI = (lock, elements) => {
     elements.form.submit.removeAttribute('disabled');
     elements.form.input.removeAttribute('readonly');
   }
+};
+
+const fillModal = (post, elements) => {
+  elements.modal.title.textContent = post.title;
+  elements.modal.description.textContent = post.description;
+  elements.modal.link.setAttribute('href', post.link);
 };
 
 const processStateHandler = (processState, elements) => {
@@ -87,18 +114,13 @@ const processStateHandler = (processState, elements) => {
   }
 };
 
-export default (state, elements) => onChange(state, (path, value) => {
+export default (state, elements, t) => onChange(state, (path, value) => {
   switch (path) {
     case 'feeds':
-      renderList(
-        value,
-        elements.feedsContainer,
-        'Новостные каналы',
-        createFeed,
-      );
+      renderList(value, elements.feedsContainer, t('feedsTitle'), createFeed);
       break;
     case 'posts':
-      renderList(value, elements.postsContainer, 'Посты', createPost);
+      renderList(value, elements.postsContainer, t('postsTitle'), createPost);
       break;
     case 'form.processState':
       processStateHandler(value, elements);
@@ -107,9 +129,13 @@ export default (state, elements) => onChange(state, (path, value) => {
       renderFeedback(value, elements);
       break;
     case 'form.error':
-      if (value) {
-        elements.feedback.textContent = value;
-      }
+      elements.feedback.textContent = value;
+      break;
+    case 'viewedPosts':
+      renderViewedPosts(value, elements);
+      break;
+    case 'modalPost':
+      fillModal(value, elements);
       break;
     default:
       break;

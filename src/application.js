@@ -1,8 +1,23 @@
+import 'bootstrap';
 import * as yup from 'yup';
 import axios from 'axios';
 import _ from 'lodash';
+import i18n from 'i18next';
 
+import resources from './locales';
 import watcher from './view';
+
+const addProxy = (url) => {
+  const proxyURL = new URL('/raw', 'https://hexlet-allorigins.herokuapp.com');
+  proxyURL.searchParams.set('url', url);
+  proxyURL.searchParams.set('disableCache', true);
+  return proxyURL.toString();
+};
+
+const fetchData = (url) => {
+  const proxyURL = addProxy(url);
+  return axios.get(proxyURL);
+};
 
 const parser = (xml) => {
   const parserInstance = new DOMParser();
@@ -10,7 +25,10 @@ const parser = (xml) => {
 
   const parserError = rssDocument.querySelector('parsererror');
   if (!_.isNull(parserError)) {
-    throw new Error();
+    const e = new Error();
+    e.name = 'ParseError';
+    e.message = parserError.textContent;
+    throw e;
   }
 
   const title = rssDocument.querySelector('title').textContent;
@@ -27,19 +45,44 @@ const parser = (xml) => {
   return { feed, posts };
 };
 
-const addRSStoState = (channel, state) => {
+const addRSStoState = (url, channel, state) => {
   const { feed, posts } = channel;
+  const feedId = state.feeds.length + 1;
+
   state.feeds.unshift({
     title: feed.title,
     description: feed.description,
-    id: _.uniqueId(),
+    url,
+    id: feedId,
   });
+
   posts.forEach((post) => {
     const { title, description, link } = post;
     state.posts.unshift({
-      title, description, link, id: _.uniqueId(),
+      title,
+      description,
+      link,
+      feedId,
+      id: _.uniqueId(),
+      isViewed: false,
     });
   });
+};
+
+const updatePosts = (state) => {
+  const { feeds, posts } = state;
+  const promisess = feeds.map((feed) => fetchData(feed.url)
+    .then((responce) => parser(responce.data))
+    .then((channel) => {
+      const newPosts = channel.posts;
+      const oldPosts = posts.filter((post) => post.feedId === feed.id);
+      const diffPosts = _.differenceBy(newPosts, oldPosts, 'link').map(
+        (post) => ({ ...post, id: _.uniqueId(), feedId: feed.id }),
+      );
+      state.posts.unshift(...diffPosts);
+    }));
+
+  Promise.all(promisess).finally(() => setTimeout(() => updatePosts(state), 5000));
 };
 
 export default () => {
@@ -49,9 +92,10 @@ export default () => {
       valid: false,
       error: null,
     },
-    channels: [],
     feeds: [],
     posts: [],
+    modalPost: null,
+    viewedPosts: new Set(),
   };
 
   const form = document.querySelector('.rss-form');
@@ -63,61 +107,92 @@ export default () => {
     feedback: document.querySelector('.feedback'),
     feedsContainer: document.querySelector('.feeds'),
     postsContainer: document.querySelector('.posts'),
+    modal: {
+      title: document.querySelector('.modal-title'),
+      description: document.querySelector('.modal-body'),
+      link: document.querySelector('.full-article'),
+    },
   };
 
-  const watchedState = watcher(state, elements);
+  const i18nInstance = i18n.createInstance();
 
-  const validate = (url) => {
-    yup.setLocale({
-      mixed: {
-        notOneOf: 'RSS уже существует',
-      },
-      string: {
-        url: 'Ссылка должна быть валидным URL',
-      },
-    });
+  i18nInstance
+    .init({
+      lng: 'ru',
+      debug: true,
+      resources,
+    })
+    .then((t) => {
+      const watchedState = watcher(state, elements, t);
 
-    const schema = yup
-      .string()
-      .required()
-      .url()
-      .notOneOf(watchedState.channels);
+      const validate = (url) => {
+        yup.setLocale({
+          mixed: {
+            notOneOf: t('validateError.notOneOf'),
+            required: t('validateError.required'),
+          },
+          string: {
+            url: t('validateError.url'),
+          },
+        });
 
-    return schema.validate(url);
-  };
+        const schema = yup
+          .string()
+          .required()
+          .url()
+          .notOneOf(watchedState.feeds.map((feed) => feed.url));
 
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const url = formData.get('url');
-    watchedState.form.processState = 'validation';
+        return schema.validate(url);
+      };
 
-    validate(url)
-      .then((valid) => {
-        watchedState.form.processState = 'sending';
-        return axios.get(
-          `https://hexlet-allorigins.herokuapp.com/raw?disableCache=true&url=${valid}`,
-        );
-      })
-      .then((responce) => {
-        watchedState.form.processState = 'parsing';
-        return parser(responce.data);
-      })
-      .then((channel) => {
-        addRSStoState(channel, watchedState);
-        watchedState.channels.push(url);
-        watchedState.form.processState = 'succeed';
-        watchedState.form.error = null;
-        watchedState.form.valid = true;
-      })
-      .catch((err) => {
-        watchedState.form.processState = 'failed';
-        watchedState.form.valid = false;
-        if (err.name === 'Error') {
-          watchedState.form.error = 'Ресурс не содержит валидный RSS';
-        } else {
-          watchedState.form.error = err.message;
-        }
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const url = formData.get('url');
+        watchedState.form.processState = 'validation';
+
+        validate(url)
+          .then((valid) => {
+            watchedState.form.processState = 'sending';
+            return fetchData(valid);
+          })
+          .then((responce) => {
+            watchedState.form.processState = 'parsing';
+            return parser(responce.data);
+          })
+          .then((channel) => {
+            addRSStoState(url, channel, watchedState);
+            watchedState.form.processState = 'succeed';
+            watchedState.form.error = null;
+            watchedState.form.valid = true;
+          })
+          .catch((err) => {
+            watchedState.form.processState = 'failed';
+            watchedState.form.valid = false;
+            if (err.name === 'ValidationError') {
+              watchedState.form.error = err.message;
+            } else if (err.name === 'ParseError') {
+              watchedState.form.error = t('parserError');
+            } else if (err.message === 'Network Error') {
+              watchedState.form.error = t('networkError');
+            } else {
+              watchedState.form.error = t('unknownError');
+            }
+          });
       });
-  });
+      elements.postsContainer.addEventListener('click', (evt) => {
+        const dataId = evt.target.dataset.id;
+        if (_.isUndefined(dataId)) {
+          return;
+        }
+        const targetType = evt.target.getAttribute('type');
+        const viewedPost = _.find(watchedState.posts, { id: dataId });
+        if (targetType === 'button') {
+          watchedState.modalPost = viewedPost;
+        }
+        viewedPost.isViewed = true;
+        watchedState.viewedPosts.add(dataId);
+      });
+      updatePosts(watchedState);
+    });
 };

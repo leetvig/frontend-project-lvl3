@@ -14,7 +14,7 @@ module.exports = {
   },
   plugins: [
     new HTMLWebpackPlugin({
-      template: 'template.html',
+      template: 'index.html',
     }),
     new CleanWebpackPlugin(),
   ],
