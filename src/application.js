@@ -8,7 +8,7 @@ import resources from './locales';
 import watcher from './view';
 
 const addProxy = (url) => {
-  const proxyURL = new URL('/raw', 'https://hexlet-allorigins.herokuapp.com');
+  const proxyURL = new URL('/get', 'https://hexlet-allorigins.herokuapp.com');
   proxyURL.searchParams.set('url', url);
   proxyURL.searchParams.set('disableCache', true);
   return proxyURL.toString();
@@ -72,7 +72,7 @@ const addRSStoState = (url, channel, state) => {
 const updatePosts = (state) => {
   const { feeds, posts } = state;
   const promisess = feeds.map((feed) => fetchData(feed.url)
-    .then((responce) => parser(responce.data))
+    .then((responce) => parser(responce.data.contents))
     .then((channel) => {
       const newPosts = channel.posts;
       const oldPosts = posts.filter((post) => post.feedId === feed.id);
@@ -119,7 +119,7 @@ export default () => {
   i18nInstance
     .init({
       lng: 'ru',
-      debug: true,
+      debug: false,
       resources,
     })
     .then((t) => {
@@ -158,7 +158,7 @@ export default () => {
           })
           .then((responce) => {
             watchedState.form.processState = 'parsing';
-            return parser(responce.data);
+            return parser(responce.data.contents);
           })
           .then((channel) => {
             addRSStoState(url, channel, watchedState);
