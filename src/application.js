@@ -33,45 +33,45 @@ const parser = (xml) => {
 
   const title = rssDocument.querySelector('title').textContent;
   const description = rssDocument.querySelector('description').textContent;
-  const feed = { title, description };
-  const items = rssDocument.querySelectorAll('item');
+  const channel = { title, description };
+  const itemsNodes = rssDocument.querySelectorAll('item');
 
-  const posts = [...items].map((item) => ({
+  const items = [...itemsNodes].map((item) => ({
     title: item.querySelector('title').textContent,
     description: item.querySelector('description').textContent,
     link: item.querySelector('link').textContent,
   }));
 
-  return { feed, posts };
+  return { channel, items };
 };
 
-const addRSStoState = (url, channel, state) => {
-  const { feed, posts } = channel;
+const addRSStoState = (url, data, state) => {
+  const { channel, items } = data;
   const feedId = state.feeds.length + 1;
 
   state.feeds.unshift({
-    title: feed.title,
-    description: feed.description,
+    title: channel.title,
+    description: channel.description,
     url,
     id: feedId,
   });
 
-  posts.forEach((post) => {
+  const posts = items.map((post) => {
     const { title, description, link } = post;
-    state.posts.unshift({
+    return {
       title,
       description,
       link,
       feedId,
       id: _.uniqueId(),
-      isViewed: false,
-    });
+    };
   });
+  state.posts = [...posts, ...state.posts];
 };
 
 const updatePosts = (state) => {
   const { feeds, posts } = state;
-  const promisess = feeds.map((feed) => fetchData(feed.url)
+  const promises = feeds.map((feed) => fetchData(feed.url)
     .then((responce) => parser(responce.data.contents))
     .then((channel) => {
       const newPosts = channel.posts;
@@ -79,10 +79,12 @@ const updatePosts = (state) => {
       const diffPosts = _.differenceBy(newPosts, oldPosts, 'link').map(
         (post) => ({ ...post, id: _.uniqueId(), feedId: feed.id }),
       );
-      state.posts.unshift(...diffPosts);
+      if (diffPosts.length !== 0) {
+        state.posts = [...diffPosts, ...state.posts];
+      }
     }));
 
-  Promise.all(promisess).finally(() => setTimeout(() => updatePosts(state), 5000));
+  Promise.all(promises).finally(() => setTimeout(() => updatePosts(state), 5000));
 };
 
 export default () => {
@@ -116,7 +118,7 @@ export default () => {
 
   const i18nInstance = i18n.createInstance();
 
-  i18nInstance
+  return i18nInstance
     .init({
       lng: 'ru',
       debug: false,
@@ -128,11 +130,11 @@ export default () => {
       const validate = (url) => {
         yup.setLocale({
           mixed: {
-            notOneOf: t('validateError.notOneOf'),
-            required: t('validateError.required'),
+            notOneOf: 'validateError.notOneOf',
+            required: 'validateError.required',
           },
           string: {
-            url: t('validateError.url'),
+            url: 'validateError.url',
           },
         });
 
@@ -160,8 +162,8 @@ export default () => {
             watchedState.form.processState = 'parsing';
             return parser(responce.data.contents);
           })
-          .then((channel) => {
-            addRSStoState(url, channel, watchedState);
+          .then((data) => {
+            addRSStoState(url, data, watchedState);
             watchedState.form.processState = 'succeed';
             watchedState.form.error = null;
             watchedState.form.valid = true;
@@ -172,25 +174,24 @@ export default () => {
             if (err.name === 'ValidationError') {
               watchedState.form.error = err.message;
             } else if (err.name === 'ParseError') {
-              watchedState.form.error = t('parserError');
+              watchedState.form.error = 'parserError';
             } else if (err.message === 'Network Error') {
-              watchedState.form.error = t('networkError');
+              watchedState.form.error = 'networkError';
             } else {
-              watchedState.form.error = t('unknownError');
+              watchedState.form.error = 'unknownError';
             }
           });
       });
+
       elements.postsContainer.addEventListener('click', (evt) => {
         const dataId = evt.target.dataset.id;
         if (_.isUndefined(dataId)) {
           return;
         }
         const targetType = evt.target.getAttribute('type');
-        const viewedPost = _.find(watchedState.posts, { id: dataId });
         if (targetType === 'button') {
-          watchedState.modalPost = viewedPost;
+          watchedState.modalPost = dataId;
         }
-        viewedPost.isViewed = true;
         watchedState.viewedPosts.add(dataId);
       });
       updatePosts(watchedState);
